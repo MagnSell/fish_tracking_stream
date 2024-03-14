@@ -136,8 +136,6 @@ def main():
     zed = sl.Camera()
 
     input_type = sl.InputType()
-    if opt.svo is not None:
-        input_type.set_from_svo_file(opt.svo)
 
     # Create a InitParameters object and set configuration parameters
     init_params = sl.InitParameters(input_t=input_type, svo_real_time_mode=True)
@@ -174,11 +172,6 @@ def main():
     camera_infos = zed.get_camera_information()
     camera_res = camera_infos.camera_configuration.resolution
 
-
-    point_cloud_res = sl.Resolution(min(camera_res.width, 720), min(camera_res.height, 404))
-    point_cloud_render = sl.Mat()
-    
-    point_cloud = sl.Mat(point_cloud_res.width, point_cloud_res.height, sl.MAT_TYPE.F32_C4, sl.MEM.CPU)
     image_left = sl.Mat()
     # Utilities for 2D display
     display_resolution = sl.Resolution(min(camera_res.width, 1280), min(camera_res.height, 720))
@@ -216,8 +209,6 @@ def main():
 
             # -- Display
             # Retrieve display data
-            zed.retrieve_measure(point_cloud, sl.MEASURE.XYZRGBA, sl.MEM.CPU, point_cloud_res)
-            point_cloud.copy_to(point_cloud_render)
             zed.retrieve_image(image_left, sl.VIEW.LEFT, sl.MEM.CPU, display_resolution)
             zed.get_position(cam_w_pose, sl.REFERENCE_FRAME.WORLD)
 
@@ -228,7 +219,13 @@ def main():
             # Tracking view
             track_view_generator.generate_view(objects, cam_w_pose, image_track_ocv, objects.is_tracked)
 
-            cv2.imshow("ZED | 2D View and Birds View", global_image)
+            if opt.viewer:
+                cv2.imshow("ZED | 2D View and Birds View", global_image)
+
+            
+
+
+            # To exit press 'esc'
             key = cv2.waitKey(10)
             if key == 27:
                 exit_signal = True
@@ -240,10 +237,13 @@ def main():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str, default='../weights/best.pt', help='model.pt path(s)')
-    parser.add_argument('--svo', type=str, default=None, help='optional svo file')
+    parser.add_argument('--weights', nargs='+', type=str, default='best.pt', help='model.pt path(s)')
     parser.add_argument('--img_size', type=int, default=640, help='inference size (pixels)')
     parser.add_argument('--conf_thres', type=float, default=0.4, help='object confidence threshold')
+    parser.add_argument('--viewer', type=bool, default=False, help='Display viewer for debugging purposes')
+
+    parser.add_argument('--ip', type=str, default="127.0.0.1")
+    parser.add_argument('--port', type=int, default=5555)
     opt = parser.parse_args()
 
     with torch.no_grad():
